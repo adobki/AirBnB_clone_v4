@@ -6,5 +6,6 @@ __pycache__/
 
 # Temp files
 *~
+.idea
 *.json
 *.xml
