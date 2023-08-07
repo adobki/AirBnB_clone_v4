@@ -67,9 +67,10 @@ getPlaces();
 // Function to check and report API availability status
 function checkStatus() {
   $('header #api_status').removeClass('available');
-  $.get('http://localhost:5001/api/v1/status', function(api){
+  var ret = $.get('http://localhost:5001/api/v1/status', function(api){
     if (api.status === 'OK') {
       $('header #api_status').addClass('available');
+      console.log('\tAPI: ' + $('header #api_status').hasClass('available'));
     }
   });
 };
@@ -104,12 +105,91 @@ $('DIV.amenities :checkbox').change(function(){
   checkStatus();
 });
 
+// Function to update selected locations filters when user clicks a checkbox
+const states = $('DIV.locations h2 :checkbox');
+const cities = $('DIV.locations LI.city :checkbox');
+const selectedStates = [], selectedCities = [];
+const selectedStatesID = [], selectedCitiesID = [];
+function filterLocations(){
+  selectedStates.length = selectedCities.length = 0;
+  selectedStatesID.length = selectedCitiesID.length = 0;
+  states.each(function(){
+    if(this.checked){
+      selectedStates.push($(this).attr('data-name'));
+      selectedStatesID.push($(this).attr('data-id'));
+    }
+  });
+  cities.each(function(){
+    if(this.checked){
+      selectedCities.push($(this).attr('data-name'));
+      selectedCitiesID.push($(this).attr('data-id'));
+    }
+  });
+
+  // Create selected locations string
+  let output = '';
+  if(selectedStates.length){
+    $('DIV.locations h3').text('States');
+    output = selectedStates.sort().join(', ');
+  } else {
+    $('DIV.locations h3').text('Cities');
+    output = selectedCities.sort().join(', ');
+  }
+
+  // Truncate string if it's too long
+  if (output.length > 26) {
+    output = output.substring(0, 23).concat('...');
+  }
+
+  // Display list of selected Amenities
+  $('DIV.locations h4').text(output);
+
+  // Check and report current API status
+  checkStatus();
+};
+
+// Function to update selected cities when user clicks a city's checkbox
+$(cities).change(function(){
+  // Uncheck parent state when a city in state is unchecked
+  const state = $(this).attr('id')
+  if (this.checked == false){
+    $(states).each(function(){
+      if($(this).attr('data-name') == state){
+        $(this).prop("checked", false);
+        // end .each method loop
+        return false;
+      }
+    });
+  }
+
+  filterLocations();
+});
+
+// Function to [un]check all cities in a state when user clicks its checkbox
+$(states).change(function(){
+  let check = false;
+  if (this.checked){
+    check = true;
+  }
+
+  $('DIV.locations #' + $(this).attr('data-name')).each(function(){
+    $(this).prop("checked", check);
+  });
+
+  filterLocations();
+});
+
 // Filter Places when user clicks Search button
 $('.filters button').click(function() {
+  // Check API status
+  checkStatus();
+
   // Remove all currently loaded places from webpage
   places.html('');
 
   // Request Places from API by user selected amenities
-  const data = {'amenities': selectedAmenitiesID};
+  const data = {'amenities' : selectedAmenitiesID,
+                'states' : selectedStatesID,
+                'cities' : selectedCitiesID};
   getPlaces(data);
 });
